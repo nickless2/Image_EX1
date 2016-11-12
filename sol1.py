@@ -35,7 +35,7 @@ def read_image(fileame, representation):
     else:
         im = im.astype(np.float32)
         im /= 255
-        print(2)
+        "asdsadada"
 
     return im
 
