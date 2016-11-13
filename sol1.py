@@ -94,10 +94,7 @@ def yiq2rgb(imRGB):
         RGB_pic[:, :, 1] += matrix_2_rgb[1, i] * imRGB[:, :, i]
         RGB_pic[:, :, 2] += matrix_2_rgb[2, i] * imRGB[:, :, i]
 
-    plt.imshow(RGB_pic)
-    plt.show()
-
-    #return RGB_pic
+    return RGB_pic
 
 im = read_image('jerusalem.jpg', 2)
 im_yiq=rgb2yiq(im)
