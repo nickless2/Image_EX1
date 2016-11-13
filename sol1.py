@@ -96,6 +96,13 @@ def yiq2rgb(imRGB):
 
     return RGB_pic
 
+def histogram_equalize(im_orig):
+
+    im = read_image
+    #if gray scale
+    if im.shape.__len__() == 2:
+
+
 im = read_image('jerusalem.jpg', 2)
 im_yiq=rgb2yiq(im)
 yiq2rgb(im_yiq)
