@@ -1,7 +1,7 @@
 from scipy.misc import imread as imread, imsave as imsave
 import matplotlib.pyplot as plt
 import numpy as np
-from skimage.color import rgb2grey
+from skimage.color import rgb2gray
 import sys
 
 
@@ -28,15 +28,15 @@ def input_validation(filename, representation):
     return im
 
 
-def read_image(filname, representation):
+def read_image(filename, representation):
     """
     reads a given image and changes its representation if necessary
     """
 
-    im = input_validation(filname, representation)
+    im = input_validation(filename, representation)
     #check if we want to convert RGB pic to greyscale
     if representation == 1 and im.shape.__len__() == 3:
-        im = rgb2grey(im)
+        im = rgb2gray(im)
         im = im.astype(np.float32)
 
     else:
@@ -96,13 +96,38 @@ def yiq2rgb(imRGB):
 
     return RGB_pic
 
+
 def histogram_equalize(im_orig):
 
-    im = read_image
-    #if gray scale
-    if im.shape.__len__() == 2:
+    # transfer back to uint8 representation
+    im_orig *= 256
+    #todo check this with others
+    im_orig = im_orig.astype(np.uint8)
+
+    #if image is a RGB
+    if im_orig.shape.__len__() == 3:
+        yiq_im = rgb2yiq(im_orig)
 
 
-im = read_image('jerusalem.jpg', 2)
-im_yiq=rgb2yiq(im)
-yiq2rgb(im_yiq)
+    hist, bin_edges = np.histogram(im_orig, 256, [0, 256])
+
+    # cumulative distribution function
+    cdf = np.cumsum(hist)
+    cdf = cdf * 255 / im_orig.size
+
+    # perform linear interpolation to get equalized image
+    eq_image = np.interp(im_orig, bin_edges[:-1], cdf)
+
+    eq_image_hist, eq_image_bin_edges = np.histogram(eq_image, 256, [0, 256])
+
+    #return [eq_image, hist, eq_image_hist]
+
+    # todo erase
+    plt.imshow(eq_image, cmap=plt.cm.gray)
+    plt.show()
+
+
+x = read_image('monkey.jpg', 1)
+histogram_equalize(x)
+
+
