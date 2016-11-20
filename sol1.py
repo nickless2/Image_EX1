@@ -53,8 +53,8 @@ def imdisplay(filename, representation):
     """
     im = read_image(filename, representation)
     #check representation type
-    representationType = plt.cm.gray if representation == 1 else None
-    plt.imshow(im, cmap=representationType)
+    representation_type = plt.cm.gray if representation == 1 else None
+    plt.imshow(im, cmap=representation_type)
     plt.show()
 
 
@@ -62,6 +62,7 @@ def rgb2yiq(imRGB):
     """
     transforms a rgb picture to yiq
     """
+
     matrix_2_YIQ = np.array([[0.299, 0.587, 0.114], [0.596, -0.275, -0.321],
                              [0.212, -0.523, 0.311]])
 
@@ -97,37 +98,96 @@ def yiq2rgb(imRGB):
     return RGB_pic
 
 
+#todo add input checks
 def histogram_equalize(im_orig):
 
-    # transfer back to uint8 representation
-    im_orig *= 256
-    #todo check this with others
-    im_orig = im_orig.astype(np.uint8)
+    is_RGB = False
 
     #if image is a RGB
     if im_orig.shape.__len__() == 3:
+        is_RGB = True
         yiq_im = rgb2yiq(im_orig)
+        y_im = yiq_im[:, :, 0]
+        image = y_im
+    else:
+        image = im_orig
+
+    # transfer back to uint8 representation
+    image *= 255
+    image = np.round(image)
+    image = image.astype(np.uint8)
 
 
-    hist, bin_edges = np.histogram(im_orig, 256, [0, 256])
+    hist, bin_edges = np.histogram(image, 256, [0, 256])
 
     # cumulative distribution function
     cdf = np.cumsum(hist)
-    cdf = cdf * 255 / im_orig.size
+    # todo
+    #cdf = cdf / image.size * 255
+
+    min_val_cdf = np.min(cdf[np.nonzero(cdf)])
+    cdf = np.round(((cdf - min_val_cdf) / (image.size - min_val_cdf)) * 255)
 
     # perform linear interpolation to get equalized image
-    eq_image = np.interp(im_orig, bin_edges[:-1], cdf)
+    eq_image = np.interp(image, bin_edges[:-1], cdf)
 
     eq_image_hist, eq_image_bin_edges = np.histogram(eq_image, 256, [0, 256])
 
+    # convert bak to float32 representation
+    eq_image = eq_image.astype(np.float32)
+    eq_image /= 255
+
+    if is_RGB:
+        yiq_im[:, :, 0] = eq_image
+        eq_image = np.clip(yiq2rgb(yiq_im), 0, 1)
+    # todo remove
+    plt.plot(eq_image_hist)
+    plt.show()
     #return [eq_image, hist, eq_image_hist]
 
     # todo erase
-    plt.imshow(eq_image, cmap=plt.cm.gray)
-    plt.show()
+    #plt.imshow(eq_image, cmap=plt.cm.gray)
+    #plt.show()
 
 
-x = read_image('monkey.jpg', 1)
-histogram_equalize(x)
+def quantize (im_orig, n_quant, n_iter):
+
+    # todo input check
+
+    # transfer values to [0, 255] format
+    image = im_orig * 255
+    image = np.round(image)
+    image = image.astype(np.uint8)
+
+    # get histogram and cumsum
+    hist = np.histogram(image, 256, [0, 256])[0]
+    cdf = np.cumsum(hist)
+
+    # calculate initial z values
+    z_arr = np.array([0, 255])
+    ppi = np.round(im_orig.size / n_quant)  # ppi = pixel per interval
+    for i in range(1, n_quant):
+        z_index = np.argwhere(cdf > i * ppi)[0, 0]
+        z_arr = np.insert(z_arr, i, z_index)
+
+    # calculate q values
+    q_index = 0
+    q_arr = np.zeros(n_quant)
+    for i in range(n_iter):
+        nominator = 0
+        denominator = 0
+        for j in range(z_arr[i], z_arr[i+1] + 1):
+            nominator += j * hist[j]
+            denominator += hist[j]
+        q_arr[q_index] = nominator / denominator
+
+
+if __name__ == '__main__':
+
+
+    x = read_image('LowContrast.jpg', 2)
+    quantize(x, 4, 4)
+
+    #histogram_equalize(x)
 
 
