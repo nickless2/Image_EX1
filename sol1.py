@@ -140,14 +140,8 @@ def histogram_equalize(im_orig):
     if is_RGB:
         yiq_im[:, :, 0] = eq_image
         eq_image = np.clip(yiq2rgb(yiq_im), 0, 1)
-    # todo remove
-    plt.plot(eq_image_hist)
-    plt.show()
-    #return [eq_image, hist, eq_image_hist]
 
-    # todo erase
-    #plt.imshow(eq_image, cmap=plt.cm.gray)
-    #plt.show()
+    return [eq_image, hist, eq_image_hist]
 
 
 def quantize (im_orig, n_quant, n_iter):
@@ -169,17 +163,31 @@ def quantize (im_orig, n_quant, n_iter):
     for i in range(1, n_quant):
         z_index = np.argwhere(cdf > i * ppi)[0, 0]
         z_arr = np.insert(z_arr, i, z_index)
-
+    print(z_arr)
     # calculate q values
-    q_index = 0
     q_arr = np.zeros(n_quant)
     for i in range(n_iter):
-        nominator = 0
-        denominator = 0
-        for j in range(z_arr[i], z_arr[i+1] + 1):
-            nominator += j * hist[j]
-            denominator += hist[j]
-        q_arr[q_index] = nominator / denominator
+        for j in range(n_quant):
+            zxc = range(z_arr[j], z_arr[j+1])
+            print(zxc)
+            q_arr[j] = np.average(zxc, weights=hist[zxc])
+            print(q_arr)
+
+            # nominator = 0
+            # denominator = 0
+            # for k in range(z_arr[j], z_arr[j+1] +1):
+            #     nominator += k * hist[k]
+            #     denominator += hist[k]
+            # q_arr[j] = nominator / denominator
+
+        #calculate neq z's
+        # for k in range(1, z_arr.size - 1):
+        #     z_arr[i] = q_arr[i-1] + q_arr[i]
+
+
+
+
+
 
 
 if __name__ == '__main__':
@@ -188,6 +196,7 @@ if __name__ == '__main__':
     x = read_image('LowContrast.jpg', 2)
     quantize(x, 4, 4)
 
+    #print(np.averge(data))
     #histogram_equalize(x)
 
 
