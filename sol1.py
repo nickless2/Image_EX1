@@ -52,16 +52,24 @@ def imdisplay(filename, representation):
     displays an image with a given representation, uses 'read_image'
     """
     im = read_image(filename, representation)
-    #check representation type
+    # check representation type
     representation_type = plt.cm.gray if representation == 1 else None
     plt.imshow(im, cmap=representation_type)
     plt.show()
+
+# def rgb_yiq_input_validation(imRGB):
+#     """
+#     checks that the input of "rgb2yiq"/"yiq2rgb" is correct
+#     """
+#     if imRGB.dtype != np.float32 or
 
 
 def rgb2yiq(imRGB):
     """
     transforms a rgb picture to yiq
     """
+
+    #rgb_yiq_input_validation(imRGB)
 
     matrix_2_YIQ = np.array([[0.299, 0.587, 0.114], [0.596, -0.275, -0.321],
                              [0.212, -0.523, 0.311]])
@@ -103,7 +111,7 @@ def histogram_equalize(im_orig):
 
     is_RGB = False
 
-    #if image is a RGB
+    # if image is a RGB
     if im_orig.shape.__len__() == 3:
         is_RGB = True
         yiq_im = rgb2yiq(im_orig)
@@ -117,14 +125,10 @@ def histogram_equalize(im_orig):
     image = np.round(image)
     image = image.astype(np.uint8)
 
-
     hist, bin_edges = np.histogram(image, 256, [0, 256])
 
     # cumulative distribution function
     cdf = np.cumsum(hist)
-    # todo
-    #cdf = cdf / image.size * 255
-
     min_val_cdf = np.min(cdf[np.nonzero(cdf)])
     cdf = np.round(((cdf - min_val_cdf) / (image.size - min_val_cdf)) * 255)
 
@@ -144,7 +148,7 @@ def histogram_equalize(im_orig):
     return [eq_image, hist, eq_image_hist]
 
 
-def quantize (im_orig, n_quant, n_iter):
+def quantize(im_orig, n_quant, n_iter):
 
     # todo input check
 
@@ -157,46 +161,57 @@ def quantize (im_orig, n_quant, n_iter):
     hist = np.histogram(image, 256, [0, 256])[0]
     cdf = np.cumsum(hist)
 
-    # calculate initial z values
+    # initialize arrays
     z_arr = np.array([0, 255])
+    q_arr = np.zeros(n_quant)
+    err_arr = np.zeros(n_iter)
+
+    # calculate initial z values
     ppi = np.round(im_orig.size / n_quant)  # ppi = pixel per interval
     for i in range(1, n_quant):
         z_index = np.argwhere(cdf > i * ppi)[0, 0]
         z_arr = np.insert(z_arr, i, z_index)
-    print(z_arr)
-    # calculate q values
-    q_arr = np.zeros(n_quant)
+
+    # starting iteration process to minimize error
     for i in range(n_iter):
+        # calculate q values
         for j in range(n_quant):
-            zxc = range(z_arr[j], z_arr[j+1])
-            print(zxc)
-            q_arr[j] = np.average(zxc, weights=hist[zxc])
-            print(q_arr)
+            average_these_values = range(z_arr[j], z_arr[j+1] + 1)
+            q_arr[j] = np.round(np.average(average_these_values, weights=hist[average_these_values]))
 
-            # nominator = 0
-            # denominator = 0
-            # for k in range(z_arr[j], z_arr[j+1] +1):
-            #     nominator += k * hist[k]
-            #     denominator += hist[k]
-            # q_arr[j] = nominator / denominator
+        # calculate z values and check for convergence
+        is_equal = True
+        for j in range(q_arr.size - 1):
+            new_val = np.round((q_arr[j] + q_arr[j+1]) / 2)
+            if z_arr[j+1] != new_val:
+                z_arr[j+1] = new_val
+                is_equal = False
+        if is_equal:
+            break
 
-        #calculate neq z's
-        # for k in range(1, z_arr.size - 1):
-        #     z_arr[i] = q_arr[i-1] + q_arr[i]
+        # calculate error
+        for j in range(n_quant):
+            z_vec = np.arange(z_arr[j], z_arr[j + 1] + 1)
+            q_vec = np.full(z_vec.size, q_arr[j], dtype=np.int)
+            hist_vec = np.take(hist, z_vec)
+            err_arr[i] = np.sum((np.power(q_vec - z_vec, 2)).dot(hist_vec))
+
+    err_arr = np.trim_zeros(err_arr)
+
+    # modify original image to quantified values
+    for z_val in range(z_arr.size - 1):
+        image[(z_arr[z_val] <= image) & (image <= z_arr[z_val+1])] = q_arr[z_val]
+
+    return_image = image.astype(np.float32) / 255
+    imsave('1.jpg', return_image)
 
 
-
-
-
-
-
+# for z_segement in range(z.size - 1):
+#     converted_img[(z[z_segement] <= converted_img) & (converted_img <= z[z_segement + 1])] = q[z_segement]
 if __name__ == '__main__':
 
-
-    x = read_image('LowContrast.jpg', 2)
+    x = read_image('Low Contrast.jpg', 1)
     quantize(x, 4, 4)
-
-    #print(np.averge(data))
-    #histogram_equalize(x)
+    #quantize(x, 3, 10)
 
 
