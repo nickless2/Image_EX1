@@ -57,12 +57,6 @@ def imdisplay(filename, representation):
     plt.imshow(im, cmap=representation_type)
     plt.show()
 
-# def rgb_yiq_input_validation(imRGB):
-#     """
-#     checks that the input of "rgb2yiq"/"yiq2rgb" is correct
-#     """
-#     if imRGB.dtype != np.float32 or
-
 
 def rgb2yiq(imRGB):
     """
@@ -106,9 +100,11 @@ def yiq2rgb(imRGB):
     return RGB_pic
 
 
-#todo add input checks
 def histogram_equalize(im_orig):
 
+    """
+    equalizes an image
+    """
     is_RGB = False
 
     # if image is a RGB
@@ -149,11 +145,23 @@ def histogram_equalize(im_orig):
 
 
 def quantize(im_orig, n_quant, n_iter):
+    """
 
-    # todo input check
+    quantize im_orig to n_quant with n_iter iterations
+    """
+
+    is_RGB = False
+    # if image is a RGB
+    if im_orig.shape.__len__() == 3:
+        is_RGB = True
+        yiq_im = rgb2yiq(im_orig)
+        y_im = yiq_im[:, :, 0]
+        image = y_im
+    else:
+        image = im_orig
 
     # transfer values to [0, 255] format
-    image = im_orig * 255
+    image *= 255
     image = np.round(image)
     image = image.astype(np.uint8)
 
@@ -167,7 +175,7 @@ def quantize(im_orig, n_quant, n_iter):
     err_arr = np.zeros(n_iter)
 
     # calculate initial z values
-    ppi = np.round(im_orig.size / n_quant)  # ppi = pixel per interval
+    ppi = np.round(image.size / n_quant)  # ppi = pixel per interval
     for i in range(1, n_quant):
         z_index = np.argwhere(cdf > i * ppi)[0, 0]
         z_arr = np.insert(z_arr, i, z_index)
@@ -177,7 +185,8 @@ def quantize(im_orig, n_quant, n_iter):
         # calculate q values
         for j in range(n_quant):
             average_these_values = range(z_arr[j], z_arr[j+1] + 1)
-            q_arr[j] = np.round(np.average(average_these_values, weights=hist[average_these_values]))
+            q_arr[j] = np.round(np.average(average_these_values,
+                                           weights=hist[average_these_values]))
 
         # calculate z values and check for convergence
         is_equal = True
@@ -200,18 +209,13 @@ def quantize(im_orig, n_quant, n_iter):
 
     # modify original image to quantified values
     for z_val in range(z_arr.size - 1):
-        image[(z_arr[z_val] <= image) & (image <= z_arr[z_val+1])] = q_arr[z_val]
+        image[(z_arr[z_val] <= image) & (image <= z_arr[z_val+1])] =\
+            q_arr[z_val]
 
     return_image = image.astype(np.float32) / 255
-    imsave('1.jpg', return_image)
 
+    if is_RGB:
+        yiq_im[:, :, 0] = return_image
+        return_image = yiq2rgb(yiq_im)
 
-# for z_segement in range(z.size - 1):
-#     converted_img[(z[z_segement] <= converted_img) & (converted_img <= z[z_segement + 1])] = q[z_segement]
-if __name__ == '__main__':
-
-    x = read_image('Low Contrast.jpg', 1)
-    quantize(x, 4, 4)
-    #quantize(x, 3, 10)
-
-
+    return [return_image, err_arr]
